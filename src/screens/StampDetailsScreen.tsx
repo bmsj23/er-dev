@@ -38,7 +38,7 @@ export function StampDetailsScreen({
           },
         ]}
       >
-        <DecorativeBackground />
+        <DecorativeBackground variant="top-only" />
         <View style={styles.fallbackContent}>
           <StatusNotice
             message="This stamp was removed from your diary, so there is no saved entry to show anymore."
@@ -64,7 +64,7 @@ export function StampDetailsScreen({
         },
       ]}
     >
-      <DecorativeBackground />
+      <DecorativeBackground variant="top-only" />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}

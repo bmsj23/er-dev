@@ -233,7 +233,7 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
         },
       ]}
     >
-      <DecorativeBackground />
+      <DecorativeBackground variant="top-only" />
 
       <ScrollView
         contentContainerStyle={styles.scrollContent}
