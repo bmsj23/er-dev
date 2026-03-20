@@ -41,7 +41,7 @@ export const EntryCard = memo(function EntryCard({
             },
           ]}
         >
-          STAMP #{entry.id.slice(-4).toUpperCase()}
+          TRAVEL STAMP
         </Text>
         <View
           style={[
