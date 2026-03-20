@@ -12,7 +12,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionButton } from '../components/ActionButton';
 import { DecorativeBackground } from '../components/DecorativeBackground';
@@ -35,6 +35,7 @@ type AddEntryScreenProps = NativeStackScreenProps<RootStackParamList, 'AddEntry'
 
 export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
   const theme = useAppTheme();
+  const insets = useSafeAreaInsets();
   const { addEntry } = useEntries();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView | null>(null);
@@ -224,8 +225,7 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
       locationState.kind === 'services-disabled');
 
   return (
-    <SafeAreaView
-      edges={['bottom']}
+    <View
       style={[
         styles.screen,
         {
@@ -236,7 +236,12 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
       <DecorativeBackground variant="top-only" />
 
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingBottom: insets.bottom + 24,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View
@@ -612,7 +617,7 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -622,7 +627,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 36,
   },
   introCard: {
     borderRadius: 30,
