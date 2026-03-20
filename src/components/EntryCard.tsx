@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import type { TravelEntry } from '../types/travel';
-import { formatCoordinatePair } from '../utils/address';
 import { formatEntryDate } from '../utils/date';
 import { useAppTheme } from '../theme/ThemeProvider';
 
@@ -113,18 +112,6 @@ export const EntryCard = memo(function EntryCard({
             {entry.address}
           </Text>
           <Text
-            numberOfLines={1}
-            style={[
-              styles.coordinates,
-              {
-                color: theme.colors.textSecondary,
-                fontFamily: theme.typography.body,
-              },
-            ]}
-          >
-            {formatCoordinatePair(entry.coordinates)}
-          </Text>
-          <Text
             style={[
               styles.hint,
               {
@@ -226,11 +213,6 @@ const styles = StyleSheet.create({
   address: {
     fontSize: 18,
     lineHeight: 26,
-    marginBottom: 8,
-  },
-  coordinates: {
-    fontSize: 14,
-    lineHeight: 20,
     marginBottom: 8,
   },
   hint: {
