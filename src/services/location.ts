@@ -1,9 +1,14 @@
 import * as Location from 'expo-location';
 
-import type { LocationResolutionResult } from '../types/travel';
+import type { Coordinates, LocationResolutionResult } from '../types/travel';
 import { buildAddressFromGeocodeResult } from '../utils/address';
 
-export async function resolveCurrentAddressAsync(): Promise<LocationResolutionResult> {
+async function ensureLocationPermission(): Promise<
+  | {
+      kind: 'granted';
+    }
+  | Exclude<LocationResolutionResult, { kind: 'success' }>
+> {
   try {
     const locationPermission = await Location.requestForegroundPermissionsAsync();
 
@@ -17,6 +22,63 @@ export async function resolveCurrentAddressAsync(): Promise<LocationResolutionRe
       };
     }
 
+    return {
+      kind: 'granted',
+    };
+  } catch {
+    return {
+      kind: 'error',
+      message: 'We could not access location permissions. Please try again.',
+    };
+  }
+}
+
+export async function resolveAddressFromCoordinatesAsync(
+  coordinates: Coordinates,
+  source: 'device' | 'photo' = 'device',
+): Promise<LocationResolutionResult> {
+  const permissionResult = await ensureLocationPermission();
+  if (permissionResult.kind !== 'granted') {
+    return permissionResult;
+  }
+
+  try {
+    const addresses = await Location.reverseGeocodeAsync(coordinates);
+    const address = buildAddressFromGeocodeResult(addresses);
+
+    if (!address) {
+      return {
+        kind: 'address-unavailable',
+        message:
+          source === 'photo'
+            ? "We could not resolve a usable address from this photo's saved capture location."
+            : 'We could not resolve a usable address from your current location.',
+      };
+    }
+
+    return {
+      kind: 'success',
+      address,
+      coordinates,
+    };
+  } catch {
+    return {
+      kind: 'error',
+      message:
+        source === 'photo'
+          ? "We could not read this photo's saved location. Please try a different photo."
+          : 'We could not read your current location. Please try again.',
+    };
+  }
+}
+
+export async function resolveCurrentAddressAsync(): Promise<LocationResolutionResult> {
+  const permissionResult = await ensureLocationPermission();
+  if (permissionResult.kind !== 'granted') {
+    return permissionResult;
+  }
+
+  try {
     const servicesEnabled = await Location.hasServicesEnabledAsync();
     if (!servicesEnabled) {
       return {
@@ -29,26 +91,13 @@ export async function resolveCurrentAddressAsync(): Promise<LocationResolutionRe
       accuracy: Location.Accuracy.Balanced,
     });
 
-    const coordinates = {
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-    };
-
-    const addresses = await Location.reverseGeocodeAsync(coordinates);
-    const address = buildAddressFromGeocodeResult(addresses);
-
-    if (!address) {
-      return {
-        kind: 'address-unavailable',
-        message: 'We could not resolve a usable address from your current location.',
-      };
-    }
-
-    return {
-      kind: 'success',
-      address,
-      coordinates,
-    };
+    return resolveAddressFromCoordinatesAsync(
+      {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      },
+      'device',
+    );
   } catch {
     return {
       kind: 'error',

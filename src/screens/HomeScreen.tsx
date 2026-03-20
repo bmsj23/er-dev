@@ -307,11 +307,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topBar: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingBottom: 16,
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 10,
   },
   overline: {
     fontSize: 12,

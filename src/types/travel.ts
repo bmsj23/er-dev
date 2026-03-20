@@ -18,6 +18,7 @@ export type DraftPhoto = {
   format: 'jpg' | 'png';
   width: number;
   height: number;
+  photoCoordinates?: Coordinates | null;
 };
 
 export type LocationResolutionResult =

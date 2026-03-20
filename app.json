@@ -42,6 +42,21 @@
         {
           "locationWhenInUsePermission": "Attach the place where each travel stamp was captured."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Travel Diary to access your photos so you can add gallery images to your stamps.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "isAccessMediaLocationEnabled": true,
+          "granularPermissions": ["photo"]
+        }
       ]
     ]
   }
