@@ -2,7 +2,13 @@ import { StyleSheet, View } from 'react-native';
 
 import { useAppTheme } from '../theme/ThemeProvider';
 
-export function DecorativeBackground() {
+type DecorativeBackgroundProps = {
+  variant?: 'full' | 'top-only';
+};
+
+export function DecorativeBackground({
+  variant = 'full',
+}: DecorativeBackgroundProps) {
   const theme = useAppTheme();
 
   return (
@@ -19,31 +25,35 @@ export function DecorativeBackground() {
           },
         ]}
       />
-      <View
-        style={[
-          styles.blob,
-          {
-            backgroundColor: theme.colors.decorativeSecondary,
-            bottom: 120,
-            left: -120,
-            width: 280,
-            height: 280,
-          },
-        ]}
-      />
-      <View
-        style={[
-          styles.blob,
-          {
-            backgroundColor: theme.colors.accentMuted,
-            bottom: -70,
-            right: 30,
-            width: 170,
-            height: 170,
-            opacity: 0.35,
-          },
-        ]}
-      />
+      {variant === 'full' ? (
+        <>
+          <View
+            style={[
+              styles.blob,
+              {
+                backgroundColor: theme.colors.decorativeSecondary,
+                bottom: 120,
+                left: -120,
+                width: 280,
+                height: 280,
+              },
+            ]}
+          />
+          <View
+            style={[
+              styles.blob,
+              {
+                backgroundColor: theme.colors.accentMuted,
+                bottom: -70,
+                right: 30,
+                width: 170,
+                height: 170,
+                opacity: 0.35,
+              },
+            ]}
+          />
+        </>
+      ) : null}
     </View>
   );
 }

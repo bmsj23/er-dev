@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ActionButton } from '../components/ActionButton';
 import { DecorativeBackground } from '../components/DecorativeBackground';
@@ -24,6 +24,7 @@ type HomeScreenProps = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
 export function HomeScreen({ navigation, route }: HomeScreenProps) {
   const theme = useAppTheme();
+  const insets = useSafeAreaInsets();
   const { entries, removeEntry } = useEntries();
   const [bannerMessage, setBannerMessage] = useState<string | null>(
     route.params?.notice ?? null,
@@ -97,6 +98,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
 
   return (
     <SafeAreaView
+      edges={['top']}
       style={[
         styles.safeArea,
         {
@@ -104,7 +106,7 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
         },
       ]}
     >
-      <DecorativeBackground />
+      <DecorativeBackground variant="top-only" />
 
       <View style={styles.topBar}>
         <View>
@@ -135,7 +137,12 @@ export function HomeScreen({ navigation, route }: HomeScreenProps) {
       </View>
 
       <FlatList
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[
+          styles.listContent,
+          {
+            paddingBottom: insets.bottom + 28,
+          },
+        ]}
         data={entries}
         ItemSeparatorComponent={() => <View style={{ height: theme.spacing.lg }} />}
         keyExtractor={keyExtractor}
