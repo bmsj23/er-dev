@@ -45,6 +45,7 @@ export function AppNavigator() {
         component={AddEntryScreen}
         name="AddEntry"
         options={{
+          headerRight: () => null,
           title: 'Add Travel Entry',
         }}
       />
