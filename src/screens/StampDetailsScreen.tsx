@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Image } from 'expo-image';
 
@@ -24,13 +24,13 @@ export function StampDetailsScreen({
   route,
 }: StampDetailsScreenProps) {
   const theme = useAppTheme();
+  const insets = useSafeAreaInsets();
   const { getEntryById } = useEntries();
   const entry = getEntryById(route.params.entryId);
 
   if (!entry) {
     return (
-      <SafeAreaView
-        edges={['bottom']}
+      <View
         style={[
           styles.fallbackScreen,
           {
@@ -39,7 +39,14 @@ export function StampDetailsScreen({
         ]}
       >
         <DecorativeBackground variant="top-only" />
-        <View style={styles.fallbackContent}>
+        <View
+          style={[
+            styles.fallbackContent,
+            {
+              paddingBottom: insets.bottom + 20,
+            },
+          ]}
+        >
           <StatusNotice
             message="This stamp was removed from your diary, so there is no saved entry to show anymore."
             title="Stamp not found"
@@ -50,13 +57,12 @@ export function StampDetailsScreen({
             onPress={() => navigation.popToTop()}
           />
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView
-      edges={['bottom']}
+    <View
       style={[
         styles.screen,
         {
@@ -66,7 +72,12 @@ export function StampDetailsScreen({
     >
       <DecorativeBackground variant="top-only" />
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingBottom: insets.bottom + 24,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         <View
@@ -237,7 +248,7 @@ export function StampDetailsScreen({
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -247,7 +258,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 36,
   },
   imageCard: {
     borderRadius: 30,
