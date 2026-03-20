@@ -20,6 +20,9 @@ function isValidTravelEntry(value: unknown): value is TravelEntry {
     return false;
   }
 
+  const coordinatesAreValid =
+    value.coordinates === null || isValidCoordinatePair(value.coordinates);
+
   return (
     typeof value.id === 'string' &&
     value.id.trim().length > 0 &&
@@ -27,7 +30,7 @@ function isValidTravelEntry(value: unknown): value is TravelEntry {
     value.imageUri.trim().length > 0 &&
     typeof value.address === 'string' &&
     value.address.trim().length > 0 &&
-    isValidCoordinatePair(value.coordinates) &&
+    coordinatesAreValid &&
     isValidIsoDate(value.createdAt)
   );
 }

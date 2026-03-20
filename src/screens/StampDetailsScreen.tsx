@@ -171,8 +171,9 @@ export function StampDetailsScreen({
               },
             ]}
           >
-            A saved travel moment with its captured place, date, and coordinate
-            stamp.
+            {entry.coordinates
+              ? 'A saved travel moment with its captured place, date, and coordinate stamp.'
+              : 'A saved travel moment with its captured date. Location details were unavailable for this entry.'}
           </Text>
 
           <View style={styles.infoGrid}>
@@ -241,9 +242,9 @@ export function StampDetailsScreen({
                 },
               ]}
             >
-              {entry.coordinates.latitude.toFixed(6)}
-              {'\n'}
-              {entry.coordinates.longitude.toFixed(6)}
+              {entry.coordinates
+                ? `${entry.coordinates.latitude.toFixed(6)}\n${entry.coordinates.longitude.toFixed(6)}`
+                : 'Location unavailable for this saved stamp.'}
             </Text>
           </View>
         </View>
@@ -258,6 +259,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    paddingTop: 28,
   },
   imageCard: {
     borderRadius: 30,

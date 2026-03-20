@@ -1,7 +1,11 @@
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 
 import type { Coordinates, LocationResolutionResult } from '../types/travel';
-import { buildAddressFromGeocodeResult } from '../utils/address';
+import {
+  buildAddressFromGeocodeResult,
+  isValidCoordinatePair,
+} from '../utils/address';
 
 async function ensureLocationPermission(): Promise<
   | {
@@ -31,6 +35,21 @@ async function ensureLocationPermission(): Promise<
       message: 'We could not access location permissions. Please try again.',
     };
   }
+}
+
+async function ensureGeocodingPermission(): Promise<
+  | {
+      kind: 'granted';
+    }
+  | Exclude<LocationResolutionResult, { kind: 'success' }>
+> {
+  if (Platform.OS !== 'android') {
+    return {
+      kind: 'granted',
+    };
+  }
+
+  return ensureLocationPermission();
 }
 
 export async function resolveAddressFromCoordinatesAsync(
@@ -102,6 +121,68 @@ export async function resolveCurrentAddressAsync(): Promise<LocationResolutionRe
     return {
       kind: 'error',
       message: 'We could not read your current location. Please try again.',
+    };
+  }
+}
+
+export async function resolveAddressFromQueryAsync(
+  query: string,
+): Promise<LocationResolutionResult> {
+  const normalizedQuery = query.trim();
+  if (normalizedQuery.length < 5) {
+    return {
+      kind: 'error',
+      message: 'Enter a fuller address so we can find the correct place.',
+    };
+  }
+
+  const permissionResult = await ensureGeocodingPermission();
+  if (permissionResult.kind !== 'granted') {
+    return permissionResult;
+  }
+
+  try {
+    const matches = await Location.geocodeAsync(normalizedQuery);
+    const firstMatch = matches.find((match) =>
+      isValidCoordinatePair({
+        latitude: match.latitude,
+        longitude: match.longitude,
+      }),
+    );
+
+    if (!firstMatch) {
+      return {
+        kind: 'address-unavailable',
+        message:
+          'We could not find a usable place from that address. Try adding more detail.',
+      };
+    }
+
+    const coordinates = {
+      latitude: firstMatch.latitude,
+      longitude: firstMatch.longitude,
+    };
+
+    try {
+      const reverseMatches = await Location.reverseGeocodeAsync(coordinates);
+      const normalizedAddress = buildAddressFromGeocodeResult(reverseMatches);
+
+      return {
+        kind: 'success',
+        address: normalizedAddress ?? normalizedQuery,
+        coordinates,
+      };
+    } catch {
+      return {
+        kind: 'success',
+        address: normalizedQuery,
+        coordinates,
+      };
+    }
+  } catch {
+    return {
+      kind: 'error',
+      message: 'We could not look up that address. Please try again.',
     };
   }
 }

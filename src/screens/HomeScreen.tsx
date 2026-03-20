@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingBottom: 16,
+    paddingBottom: 28,
     paddingHorizontal: 20,
     paddingTop: 10,
   },
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingBottom: 40,
     paddingHorizontal: 20,
-    paddingTop: 18,
+    paddingTop: 22,
   },
   headerContent: {
     gap: 18,

@@ -9,7 +9,7 @@ export type TravelEntry = {
   id: string;
   imageUri: string;
   address: string;
-  coordinates: Coordinates;
+  coordinates: Coordinates | null;
   createdAt: string;
 };
 

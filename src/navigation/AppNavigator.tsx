@@ -1,4 +1,5 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Platform } from 'react-native';
 
 import { ThemeToggleButton } from '../components/ThemeToggleButton';
 import { AddEntryScreen } from '../screens/AddEntryScreen';
@@ -11,6 +12,8 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export function AppNavigator() {
   const theme = useAppTheme();
+  const detailScreenAnimation =
+    Platform.OS === 'ios' ? 'simple_push' : 'slide_from_right';
 
   return (
     <Stack.Navigator
@@ -45,6 +48,8 @@ export function AppNavigator() {
         component={AddEntryScreen}
         name="AddEntry"
         options={{
+          animation: detailScreenAnimation,
+          animationDuration: Platform.OS === 'ios' ? 240 : undefined,
           headerRight: () => null,
           title: 'Add Travel Entry',
         }}
@@ -53,6 +58,8 @@ export function AppNavigator() {
         component={StampDetailsScreen}
         name="StampDetails"
         options={{
+          animation: detailScreenAnimation,
+          animationDuration: Platform.OS === 'ios' ? 240 : undefined,
           headerRight: () => null,
           title: 'Stamp Details',
         }}

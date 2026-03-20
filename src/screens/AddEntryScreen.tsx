@@ -52,6 +52,8 @@ type SourceNotice = {
   title: string;
 };
 
+const LOCATION_UNAVAILABLE_LABEL = 'Location unavailable';
+
 function derivePhotoFormat(
   uri: string,
   mimeType?: string | null,
@@ -105,6 +107,10 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
     useState<LocationResolutionResult | null>(null);
   const [sourceNotice, setSourceNotice] = useState<SourceNotice | null>(null);
   const [isResolvingLocation, setIsResolvingLocation] = useState(false);
+  const [resolvingSource, setResolvingSource] = useState<
+    'device' | 'photo' | null
+  >(null);
+  const [isLocationUnavailable, setIsLocationUnavailable] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -117,6 +123,8 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
     setLocationState(null);
     setSourceNotice(null);
     setIsResolvingLocation(false);
+    setResolvingSource(null);
+    setIsLocationUnavailable(false);
     setIsSaving(false);
     setSaveError(null);
     setCameraReady(false);
@@ -131,48 +139,96 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
   );
 
   const canSave =
-    Boolean(draftPhoto && resolvedAddress && coordinates) &&
+    Boolean(
+      draftPhoto &&
+        ((resolvedAddress && coordinates) || isLocationUnavailable),
+    ) &&
     !isResolvingLocation &&
     !isSaving;
+
+  const applyLocationResult = useCallback(
+    (result: LocationResolutionResult) => {
+      setLocationState(result);
+
+      if (result.kind === 'success') {
+        setResolvedAddress(result.address);
+        setCoordinates(result.coordinates);
+        setIsLocationUnavailable(false);
+        return;
+      }
+
+      setResolvedAddress(null);
+      setCoordinates(null);
+      setIsLocationUnavailable(false);
+    },
+    [],
+  );
+
+  const resolveWithCurrentLocation = useCallback(async () => {
+    setIsResolvingLocation(true);
+    setResolvingSource('device');
+    setLocationState(null);
+    setResolvedAddress(null);
+    setCoordinates(null);
+
+    try {
+      const result = await resolveCurrentAddressAsync();
+      applyLocationResult(result);
+    } finally {
+      setIsResolvingLocation(false);
+      setResolvingSource(null);
+    }
+  }, [applyLocationResult]);
+
+  const resolveWithPhotoCoordinates = useCallback(
+    async (photoCoordinates: Coordinates) => {
+      setIsResolvingLocation(true);
+      setResolvingSource('photo');
+      setLocationState(null);
+      setResolvedAddress(null);
+      setCoordinates(null);
+
+      try {
+        const result = await resolveAddressFromCoordinatesAsync(
+          photoCoordinates,
+          'photo',
+        );
+        applyLocationResult(result);
+      } finally {
+        setIsResolvingLocation(false);
+        setResolvingSource(null);
+      }
+    },
+    [applyLocationResult],
+  );
 
   const resolveLocation = useCallback(async () => {
     if (!draftPhoto) {
       return;
     }
 
-    setIsResolvingLocation(true);
-    setLocationState(null);
-    setResolvedAddress(null);
-    setCoordinates(null);
-
-    let result: LocationResolutionResult;
-
     if (draftSource === 'gallery') {
       if (!draftPhoto.photoCoordinates) {
-        result = {
+        applyLocationResult({
           kind: 'error',
           message:
-            'This gallery photo does not include saved location metadata, so we cannot resolve where it was taken.',
-        };
-      } else {
-        result = await resolveAddressFromCoordinatesAsync(
-          draftPhoto.photoCoordinates,
-          'photo',
-        );
+            'Location unavailable. This gallery photo does not include saved location metadata. You can use your current location or save it without location details.',
+        });
+        return;
       }
-    } else {
-      result = await resolveCurrentAddressAsync();
+
+      await resolveWithPhotoCoordinates(draftPhoto.photoCoordinates);
+      return;
     }
 
-    setLocationState(result);
-
-    if (result.kind === 'success') {
-      setResolvedAddress(result.address);
-      setCoordinates(result.coordinates);
-    }
-
-    setIsResolvingLocation(false);
-  }, [draftPhoto, draftSource]);
+    await resolveWithCurrentLocation();
+  }, [
+    applyLocationResult,
+    draftPhoto,
+    draftSource,
+    resolveWithCurrentLocation,
+    resolveWithPhotoCoordinates,
+  ]);
 
   const handleUseCamera = useCallback(async () => {
     setSaveError(null);
@@ -206,17 +262,16 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
     setSaveError(null);
     setSourceNotice(null);
     setCaptureMode('chooser');
-    setIsResolvingLocation(true);
     setLocationState(null);
     setResolvedAddress(null);
     setCoordinates(null);
+    setIsLocationUnavailable(false);
 
     const permissionResponse = mediaLibraryPermission?.granted
       ? mediaLibraryPermission
       : await requestMediaLibraryPermission();
 
     if (!permissionResponse.granted) {
-      setIsResolvingLocation(false);
       setSourceNotice({
         action: permissionResponse.canAskAgain
           ? 'retry-gallery'
@@ -241,13 +296,11 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
       });
 
       if (result.canceled || !result.assets?.length) {
-        setIsResolvingLocation(false);
         return;
       }
 
       const firstAsset = result.assets[0];
       if (firstAsset.type && firstAsset.type !== 'image') {
-        setIsResolvingLocation(false);
         setSaveError('Please choose an image from your gallery.');
         return;
       }
@@ -262,6 +315,7 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
       setDraftSource('gallery');
       setDraftPhoto(nextDraft);
       setCaptureMode('chooser');
+      setLocationState(null);
 
       const photoCoordinates =
         (await resolveLibraryPhotoCoordinatesAsync(firstAsset)) ??
@@ -277,38 +331,34 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
       );
 
       if (photoCoordinates) {
-        const resultFromPhoto = await resolveAddressFromCoordinatesAsync(
-          photoCoordinates,
-          'photo',
-        );
-        setLocationState(resultFromPhoto);
-
-        if (resultFromPhoto.kind === 'success') {
-          setResolvedAddress(resultFromPhoto.address);
-          setCoordinates(resultFromPhoto.coordinates);
-        } else {
-          setResolvedAddress(null);
-          setCoordinates(null);
-        }
+        await resolveWithPhotoCoordinates(photoCoordinates);
       } else {
-        setLocationState({
+        applyLocationResult({
           kind: 'error',
           message:
-            'This gallery photo does not include saved location metadata, so we cannot resolve where it was taken.',
+            'Location unavailable. This gallery photo does not include saved location metadata. You can use your current location or save it without location details.',
         });
-        setResolvedAddress(null);
-        setCoordinates(null);
       }
     } catch {
       setSaveError('We could not open your gallery. Please try again.');
-    } finally {
-      setIsResolvingLocation(false);
     }
-  }, [mediaLibraryPermission, requestMediaLibraryPermission]);
+  }, [
+    applyLocationResult,
+    mediaLibraryPermission,
+    requestMediaLibraryPermission,
+    resolveWithPhotoCoordinates,
+  ]);
 
   const handleChooseAnotherPhoto = useCallback(() => {
     resetDraft();
   }, [resetDraft]);
+
+  const handleSaveWithoutLocation = useCallback(() => {
+    setLocationState(null);
+    setResolvedAddress(LOCATION_UNAVAILABLE_LABEL);
+    setCoordinates(null);
+    setIsLocationUnavailable(true);
+  }, []);
 
   const handleTakePhoto = useCallback(async () => {
     if (!cameraRef.current || !cameraReady) {
@@ -335,29 +385,18 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
       setDraftSource('camera');
       setDraftPhoto(nextPhoto);
       setCaptureMode('chooser');
-      const currentLocationResult = await resolveCurrentAddressAsync();
-      setLocationState(currentLocationResult);
-
-      if (currentLocationResult.kind === 'success') {
-        setResolvedAddress(currentLocationResult.address);
-        setCoordinates(currentLocationResult.coordinates);
-      } else {
-        setResolvedAddress(null);
-        setCoordinates(null);
-      }
+      await resolveWithCurrentLocation();
     } catch {
       setSaveError('We could not capture the photo. Please try again.');
     }
-  }, [cameraReady]);
+  }, [cameraReady, resolveWithCurrentLocation]);
 
   const handleSave = useCallback(async () => {
-    if (
-      !draftPhoto ||
-      !resolvedAddress ||
-      !coordinates ||
-      isSaving ||
-      isResolvingLocation
-    ) {
+    if (!draftPhoto || isSaving || isResolvingLocation) {
+      return;
+    }
+
+    if (!isLocationUnavailable && (!resolvedAddress || !coordinates)) {
       return;
     }
 
@@ -367,10 +406,15 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
     try {
       const entryId = Date.now().toString();
       const persistedImageUri = await persistCapturedImageAsync(draftPhoto, entryId);
+      const entryAddress =
+        isLocationUnavailable || resolvedAddress === null
+          ? LOCATION_UNAVAILABLE_LABEL
+          : resolvedAddress;
+      const entryCoordinates = isLocationUnavailable ? null : coordinates;
 
       const entry: TravelEntry = {
-        address: resolvedAddress,
-        coordinates,
+        address: entryAddress,
+        coordinates: entryCoordinates,
         createdAt: new Date().toISOString(),
         id: entryId,
         imageUri: persistedImageUri,
@@ -400,6 +444,7 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
     addEntry,
     coordinates,
     draftPhoto,
+    isLocationUnavailable,
     isResolvingLocation,
     isSaving,
     navigation,
@@ -411,13 +456,30 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
       ? locationState.message
       : null;
 
+  const galleryDraftWithoutPhotoLocation =
+    draftSource === 'gallery' &&
+    draftPhoto !== null &&
+    !draftPhoto.photoCoordinates;
+
   const showRetryLocationButton =
     draftPhoto &&
     !isResolvingLocation &&
     locationState &&
+    !galleryDraftWithoutPhotoLocation &&
     (locationState.kind === 'error' ||
       locationState.kind === 'address-unavailable' ||
       (locationState.kind === 'permission-denied' && locationState.canAskAgain));
+
+  const showUseCurrentLocationButton =
+    draftSource === 'gallery' &&
+    galleryDraftWithoutPhotoLocation &&
+    !isResolvingLocation;
+
+  const showSaveUnavailableButton =
+    draftSource === 'gallery' &&
+    galleryDraftWithoutPhotoLocation &&
+    !isResolvingLocation &&
+    !isLocationUnavailable;
 
   const showOpenSettingsButton =
     locationState &&
@@ -784,15 +846,50 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
               </Text>
 
               {isResolvingLocation ? (
-                <StatusNotice
-                  message={
-                    draftSource === 'gallery'
-                      ? "Reading the saved place from this photo's metadata and resolving it into a usable address."
-                      : 'Reverse geocoding your current location into a usable address.'
-                  }
-                  title="Developing location"
-                  tone="info"
-                />
+                <View style={styles.locationFeedback}>
+                  <StatusNotice
+                    message={
+                      resolvingSource === 'photo'
+                        ? "Reading the saved place from this photo's metadata and resolving it into a usable address."
+                        : 'Reverse geocoding your current location into a usable address.'
+                    }
+                    title="Developing location"
+                    tone="info"
+                  />
+                </View>
+              ) : isLocationUnavailable ? (
+                <View
+                  style={[
+                    styles.addressPanel,
+                    {
+                      backgroundColor: theme.colors.surfaceElevated,
+                      borderColor: theme.colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.addressLabel,
+                      {
+                        color: theme.colors.textMuted,
+                        fontFamily: theme.typography.label,
+                      },
+                    ]}
+                  >
+                    SAVE WITHOUT LOCATION
+                  </Text>
+                  <Text
+                    style={[
+                      styles.addressValue,
+                      {
+                        color: theme.colors.textPrimary,
+                        fontFamily: theme.typography.body,
+                      },
+                    ]}
+                  >
+                    {LOCATION_UNAVAILABLE_LABEL}
+                  </Text>
+                </View>
               ) : resolvedAddress ? (
                 <View
                   style={[
@@ -827,11 +924,13 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
                   </Text>
                 </View>
               ) : locationMessage ? (
-                <StatusNotice
-                  message={locationMessage}
-                  title="Location blocked"
-                  tone="error"
-                />
+                <View style={styles.locationFeedback}>
+                  <StatusNotice
+                    message={locationMessage}
+                    title="Location unavailable"
+                    tone="error"
+                  />
+                </View>
               ) : null}
 
               <View style={styles.buttonStack}>
@@ -841,6 +940,26 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
                   onPress={handleChooseAnotherPhoto}
                   variant="secondary"
                 />
+
+                {showUseCurrentLocationButton ? (
+                  <ActionButton
+                    fullWidth
+                    label="Use Current Location Instead"
+                    onPress={() => {
+                      void resolveWithCurrentLocation();
+                    }}
+                    variant="ghost"
+                  />
+                ) : null}
+
+                {showSaveUnavailableButton ? (
+                  <ActionButton
+                    fullWidth
+                    label="Save Location Unavailable"
+                    onPress={handleSaveWithoutLocation}
+                    variant="ghost"
+                  />
+                ) : null}
 
                 {showRetryLocationButton ? (
                   <ActionButton
@@ -894,6 +1013,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
+    paddingTop: 28,
   },
   introCard: {
     borderRadius: 30,
@@ -1057,6 +1177,9 @@ const styles = StyleSheet.create({
   addressValue: {
     fontSize: 15,
     lineHeight: 24,
+  },
+  locationFeedback: {
+    marginBottom: 16,
   },
   buttonStack: {
     gap: 12,
