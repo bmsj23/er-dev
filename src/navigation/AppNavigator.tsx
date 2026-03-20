@@ -52,6 +52,7 @@ export function AppNavigator() {
         component={StampDetailsScreen}
         name="StampDetails"
         options={{
+          headerRight: () => null,
           title: 'Stamp Details',
         }}
       />
