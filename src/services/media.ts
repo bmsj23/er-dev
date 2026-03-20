@@ -64,6 +64,20 @@ export async function resolveLibraryPhotoCoordinatesAsync(
   );
 }
 
+export function getImageFingerprint(uri: string): string | null {
+  try {
+    const file = new File(uri);
+    if (!file.exists) {
+      return null;
+    }
+
+    const info = file.info({ md5: true });
+    return info.exists ? info.md5 ?? null : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function persistCapturedImageAsync(
   photo: DraftPhoto,
   entryId: string,

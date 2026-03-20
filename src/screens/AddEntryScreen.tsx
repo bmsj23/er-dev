@@ -6,6 +6,7 @@ import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useRef, useState } from 'react';
 import {
+  Alert,
   Linking,
   Pressable,
   ScrollView,
@@ -23,6 +24,7 @@ import {
   resolveCurrentAddressAsync,
 } from '../services/location';
 import {
+  getImageFingerprint,
   persistCapturedImageAsync,
   resolveLibraryPhotoCoordinatesAsync,
 } from '../services/media';
@@ -90,7 +92,7 @@ function createDraftPhotoFromLibraryAsset(
 export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
-  const { addEntry } = useEntries();
+  const { addEntry, entries } = useEntries();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
   const [mediaLibraryPermission, requestMediaLibraryPermission] =
     ImagePicker.useMediaLibraryPermissions();
@@ -391,6 +393,28 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
     }
   }, [cameraReady, resolveWithCurrentLocation]);
 
+  const confirmDuplicateSave = useCallback(
+    () =>
+      new Promise<boolean>((resolve) => {
+        Alert.alert(
+          'Duplicate image detected',
+          'This image is already saved. Do you still want to save it again as a duplicate?',
+          [
+            {
+              text: 'Cancel',
+              style: 'cancel',
+              onPress: () => resolve(false),
+            },
+            {
+              text: 'Save Anyway',
+              onPress: () => resolve(true),
+            },
+          ],
+        );
+      }),
+    [],
+  );
+
   const handleSave = useCallback(async () => {
     if (!draftPhoto || isSaving || isResolvingLocation) {
       return;
@@ -398,6 +422,25 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
 
     if (!isLocationUnavailable && (!resolvedAddress || !coordinates)) {
       return;
+    }
+
+    const draftFingerprint = getImageFingerprint(draftPhoto.uri);
+    if (draftSource === 'gallery' && draftFingerprint) {
+      const hasDuplicate = entries.some((entry) => {
+        if (entry.imageFingerprint) {
+          return entry.imageFingerprint === draftFingerprint;
+        }
+
+        const existingFingerprint = getImageFingerprint(entry.imageUri);
+        return existingFingerprint === draftFingerprint;
+      });
+
+      if (hasDuplicate) {
+        const shouldProceed = await confirmDuplicateSave();
+        if (!shouldProceed) {
+          return;
+        }
+      }
     }
 
     setIsSaving(true);
@@ -417,6 +460,7 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
         coordinates: entryCoordinates,
         createdAt: new Date().toISOString(),
         id: entryId,
+        imageFingerprint: draftFingerprint,
         imageUri: persistedImageUri,
       };
 
@@ -442,8 +486,11 @@ export function AddEntryScreen({ navigation }: AddEntryScreenProps) {
     }
   }, [
     addEntry,
+    confirmDuplicateSave,
     coordinates,
     draftPhoto,
+    draftSource,
+    entries,
     isLocationUnavailable,
     isResolvingLocation,
     isSaving,

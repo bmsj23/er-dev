@@ -8,6 +8,7 @@ export type Coordinates = {
 export type TravelEntry = {
   id: string;
   imageUri: string;
+  imageFingerprint?: string | null;
   address: string;
   coordinates: Coordinates | null;
   createdAt: string;

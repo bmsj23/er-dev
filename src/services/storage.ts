@@ -22,12 +22,18 @@ function isValidTravelEntry(value: unknown): value is TravelEntry {
 
   const coordinatesAreValid =
     value.coordinates === null || isValidCoordinatePair(value.coordinates);
+  const fingerprintIsValid =
+    value.imageFingerprint === undefined ||
+    value.imageFingerprint === null ||
+    (typeof value.imageFingerprint === 'string' &&
+      value.imageFingerprint.trim().length > 0);
 
   return (
     typeof value.id === 'string' &&
     value.id.trim().length > 0 &&
     typeof value.imageUri === 'string' &&
     value.imageUri.trim().length > 0 &&
+    fingerprintIsValid &&
     typeof value.address === 'string' &&
     value.address.trim().length > 0 &&
     coordinatesAreValid &&
