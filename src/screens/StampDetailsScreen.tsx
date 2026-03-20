@@ -12,7 +12,6 @@ import { StatusNotice } from '../components/StatusNotice';
 import { useEntries } from '../state/EntriesContext';
 import { useAppTheme } from '../theme/ThemeProvider';
 import type { RootStackParamList } from '../types/navigation';
-import { formatCoordinatePair } from '../utils/address';
 import { formatEntryDateTime } from '../utils/date';
 
 type StampDetailsScreenProps = NativeStackScreenProps<
@@ -167,7 +166,6 @@ export function StampDetailsScreen({
 
           <View style={styles.infoGrid}>
             <InfoChip label="Created" value={formatEntryDateTime(entry.createdAt)} />
-            <InfoChip label="Coordinates" value={formatCoordinatePair(entry.coordinates)} />
           </View>
 
           <View
